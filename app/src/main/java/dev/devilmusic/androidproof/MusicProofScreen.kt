@@ -54,6 +54,8 @@ class MusicProofScreen(context:Context,private val action:(String)->Unit,private
         get()=browser.onClearSearch
         set(value){browser.onClearSearch=value}
     private val browser=MusicBrowser(context,{onMusicOpen(it)},{q,k->onMusicSearch(q,k)},{action("home")},{action("choose")},{action("retry_catalog")},{onMusicPin(it)},{action("refresh_home")}).apply {onCatalogBack={action("catalog_back")};onPlaylists={action("playlists")};onLibraryHome={action("section:library")};onPlayCollection={action("play_collection")}}
+    private val updateBanner=button("Update available"){action("app_update")}.apply {visibility=GONE}
+    fun updateAvailable(label:String?){updateBanner.visibility=if(label==null)GONE else VISIBLE;updateBanner.text="Devil Music $label · Update available"}
     private val header=LinearLayout(context).apply {gravity=Gravity.CENTER_VERTICAL;background=MusicStyle.panel(context,22);setPadding(dp(7),0,dp(4),0)}
     private val brand=WaterMusicMark(context)
     private val workspace=FrameLayout(context)
@@ -82,13 +84,13 @@ class MusicProofScreen(context:Context,private val action:(String)->Unit,private
     private val time=label(11f,MusicStyle.muted)
     private val duration=label(11f,MusicStyle.muted)
     private val notice=label(12f,MusicStyle.muted,lines=2).apply {visibility=GONE;setPadding(dp(6),dp(6),dp(6),dp(6))}
-    private val play=icon("play","Play or pause",true){action("toggle")}
-    private val miniPlay=icon("play","Play or pause",true){action("toggle")}
-    private val previous=icon("previous","Previous track"){action("previous")}
-    private val next=icon("next","Next track"){action("next")}
-    private val miniNext=icon("next","Next track"){action("next")}
-    private val shuffle=icon("shuffle","Shuffle"){action("shuffle")}
-    private val repeat=icon("repeat","Repeat"){action("repeat")}
+    private val play=PlayerControl(context,"play","Play or pause",true){action("toggle")}
+    private val miniPlay=PlayerControl(context,"play","Play or pause",true){action("toggle")}
+    private val previous=PlayerControl(context,"previous","Previous track"){action("previous")}
+    private val next=PlayerControl(context,"next","Next track"){action("next")}
+    private val miniNext=PlayerControl(context,"next","Next track"){action("next")}
+    private val shuffle=PlayerControl(context,"shuffle","Shuffle"){action("shuffle")}
+    private val repeat=PlayerControl(context,"repeat","Repeat"){action("repeat")}
     private val offline=button("Save offline"){action("download")}
     private var downloading=false
     private var selected=false
@@ -193,6 +195,7 @@ class MusicProofScreen(context:Context,private val action:(String)->Unit,private
         header.addView(icon("add","Collection: local files, PC import and playlists"){action("library_tools")},LayoutParams(dp(48),dp(48)))
         header.addView(icon("menu","Playback options and diagnostics"){action("options")},LayoutParams(dp(48),dp(48)))
         addView(header,LayoutParams(-1,dp(56)))
+        addView(updateBanner,LayoutParams(-1,dp(48)).apply {topMargin=dp(6)})
         for((id,title,symbol) in listOf(Triple("home","Discover","discover"),Triple("library","Library","collection"),Triple("downloads","Downloads","offline"),Triple("queue","Queue","upnext"))) {
             val glyph=MusicGlyph(context,symbol,MusicStyle.muted)
             val caption=label(10f,MusicStyle.muted,true).apply {text=title;gravity=Gravity.CENTER}
@@ -370,9 +373,8 @@ class MusicProofScreen(context:Context,private val action:(String)->Unit,private
         play.update(if(player?.isPlaying==true)"pause" else "play");miniPlay.update(play.symbol)
         for(control in listOf(play,miniPlay,previous,next,miniNext,shuffle,repeat))control.isEnabled=selected
         previous.isEnabled=selected && (player?.hasPreviousMediaItem()==true || player?.isCurrentMediaItemSeekable==true);next.isEnabled=selected && player?.hasNextMediaItem()==true;miniNext.isEnabled=next.isEnabled
-        shuffle.update("shuffle",if(player?.shuffleModeEnabled==true)MusicStyle.accent else MusicStyle.muted)
-        repeat.update(if(player?.repeatMode==Player.REPEAT_MODE_ONE)"repeat_one" else "repeat",if(player?.repeatMode!=null && player.repeatMode!=Player.REPEAT_MODE_OFF)MusicStyle.accent else MusicStyle.muted)
-        repeat.contentDescription="Repeat: ${when(player?.repeatMode){Player.REPEAT_MODE_ONE->"one track";Player.REPEAT_MODE_ALL->"all tracks";else->"off"}}"
+        shuffle.mode(player?.shuffleModeEnabled==true,"Shuffle: ${if(player?.shuffleModeEnabled==true)"on" else "off"}")
+        repeat.mode(player?.repeatMode in setOf(Player.REPEAT_MODE_ONE,Player.REPEAT_MODE_ALL),"Repeat: ${when(player?.repeatMode){Player.REPEAT_MODE_ONE->"one track";Player.REPEAT_MODE_ALL->"all tracks";else->"off"}}",if(player?.repeatMode==Player.REPEAT_MODE_ONE)"repeat_one" else "repeat")
         offline.isEnabled=downloading || player?.currentMediaItem?.mediaId?.startsWith("youtube:")==true;offline.alpha=if(offline.isEnabled)1f else .4f
         mini.visibility=if(!wide && !fullPlayer && selected)VISIBLE else GONE
         updateProgress(player)

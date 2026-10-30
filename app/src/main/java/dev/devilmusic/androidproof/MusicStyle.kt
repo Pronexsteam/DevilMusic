@@ -65,11 +65,14 @@ internal class AmbientSurface(colors:IntArray=AmbientPalette.resting()):Drawable
     @Deprecated("Drawable opacity") override fun getOpacity()=PixelFormat.TRANSLUCENT
 }
 
-internal class MusicGlyph(context:Context,var symbol:String,private var tone:Int=MusicStyle.ink):View(context) {
+internal open class MusicGlyph(context:Context,var symbol:String,private var tone:Int=MusicStyle.ink):View(context) {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
     private val forwardTriangle=Path().apply {moveTo(19f,16f);lineTo(31f,24f);lineTo(19f,32f);close()}
     private val reverseTriangle=Path().apply {moveTo(29f,16f);lineTo(17f,24f);lineTo(29f,32f);close()}
     private val brandCurve=Path().apply {moveTo(19f,28f);cubicTo(20f,13f,27f,35f,29f,20f)}
+    private val shuffleUpper=Path().apply {moveTo(13f,16f);lineTo(16f,16f);cubicTo(22f,16f,25f,32f,31f,32f);lineTo(35f,32f)}
+    private val shuffleLower=Path().apply {moveTo(13f,32f);lineTo(16f,32f);cubicTo(19f,32f,20.5f,29f,22f,27f);moveTo(26f,21f);cubicTo(28f,18f,29f,16f,32f,16f);lineTo(35f,16f)}
+    private val repeatLoop=Path().apply {moveTo(13f,24f);lineTo(13f,22f);quadTo(13f,16f,19f,16f);lineTo(34f,16f);moveTo(35f,24f);lineTo(35f,26f);quadTo(35f,32f,29f,32f);lineTo(14f,32f)}
     override fun getAccessibilityClassName():CharSequence="android.widget.Button"
     fun update(name:String,color:Int=tone){if(symbol==name && tone==color)return;symbol=name;tone=color;invalidate()}
     override fun onDraw(canvas:Canvas) {
@@ -98,8 +101,14 @@ internal class MusicGlyph(context:Context,var symbol:String,private var tone:Int
             "heart","heart_filled"->{if(symbol=="heart_filled")paint.style=Paint.Style.FILL;val heart=Path().apply {moveTo(24f,35f);cubicTo(5f,24f,12f,9f,24f,18f);cubicTo(36f,9f,43f,24f,24f,35f);close()};canvas.drawPath(heart,paint)}
             "search"->{canvas.drawCircle(22f,22f,7f,paint);line(27f,27f,33f,33f)}
             "clear"->{line(16f,18f,32f,18f);line(20f,14f,28f,14f);line(18f,21f,19f,34f);line(19f,34f,29f,34f);line(29f,34f,30f,21f)}
-            "shuffle"->{line(14f,17f,32f,31f);line(14f,31f,32f,17f);line(28f,17f,33f,17f);line(33f,17f,33f,22f);line(28f,31f,33f,31f)}
-            "repeat","repeat_one"->{line(15f,18f,33f,18f);line(33f,18f,33f,26f);line(33f,30f,15f,30f);line(15f,30f,15f,22f);line(29f,14f,33f,18f);line(19f,34f,15f,30f);if(symbol=="repeat_one"){paint.style=Paint.Style.FILL;paint.textSize=10f;paint.textAlign=Paint.Align.CENTER;canvas.drawText("1",24f,28f,paint)}}
+            "shuffle"->{
+                canvas.drawPath(shuffleUpper,paint);canvas.drawPath(shuffleLower,paint)
+                line(31f,12f,35f,16f);line(35f,16f,31f,20f);line(31f,28f,35f,32f);line(35f,32f,31f,36f)
+            }
+            "repeat","repeat_one"->{
+                canvas.drawPath(repeatLoop,paint);line(30f,12f,34f,16f);line(34f,16f,30f,20f);line(18f,28f,14f,32f);line(14f,32f,18f,36f)
+                if(symbol=="repeat_one"){paint.style=Paint.Style.FILL;paint.textSize=10f;paint.typeface=Typeface.DEFAULT_BOLD;paint.textAlign=Paint.Align.CENTER;canvas.drawText("1",24f,27.5f,paint)}
+            }
             "home","brand"->{canvas.drawCircle(24f,24f,11f,paint);canvas.drawPath(brandCurve,paint);if(symbol=="brand")canvas.drawCircle(24f,24f,16f,paint)}
             "library"->{canvas.drawRoundRect(14f,15f,21f,33f,2f,2f,paint);canvas.drawRoundRect(24f,15f,31f,33f,2f,2f,paint);line(34f,16f,37f,32f)}
             "download"->{line(24f,13f,24f,29f);line(18f,24f,24f,30f);line(24f,30f,30f,24f);line(14f,30f,14f,35f);line(14f,35f,34f,35f);line(34f,35f,34f,30f)}

@@ -9,8 +9,8 @@ android {
         if (providers.gradleProperty("isolatedQa").orNull == "true") applicationIdSuffix = ".qa"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.0.17-preview"
+        versionCode = 18
+        versionName = "0.0.18-preview"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     val debugStore = providers.environmentVariable("ANDROID_DEBUG_KEYSTORE_FILE").orNull

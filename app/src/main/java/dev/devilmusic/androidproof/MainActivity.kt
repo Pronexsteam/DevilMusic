@@ -107,6 +107,26 @@ class MainActivity : Activity() {
     private var queueIndexes=emptyMap<String,Int>()
     private var pendingItems: List<MediaItem> = emptyList()
     private var active = false
+    private var updateChecking=false
+    private var availableUpdate:UpdateRelease?=null
+    private val installedVersion by lazy {packageManager.getPackageInfo(packageName,0).versionName ?: "unknown"}
+    private fun checkAppUpdate(manual:Boolean=false){
+        if(updateChecking)return
+        updateChecking=true
+        if(manual)android.widget.Toast.makeText(this,"Checking for updates…",android.widget.Toast.LENGTH_SHORT).show()
+        AppUpdates.check(applicationContext,installedVersion,manual).whenComplete {result,error->runOnUiThread {
+            updateChecking=false
+            if(!isDestroyed && !isFinishing){
+                availableUpdate=result?.available;screen.updateAvailable(availableUpdate?.label)
+                if(manual && active)showAppUpdate(error!=null || result?.failed==true)
+            }
+        }}
+    }
+    private fun showAppUpdate(failed:Boolean=false){
+        UpdateSheet.show(this,installedVersion,availableUpdate,failed,{url->
+            runCatching {startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)))}.onFailure {android.widget.Toast.makeText(this,"No browser available to download the APK",android.widget.Toast.LENGTH_LONG).show()}
+        },{checkAppUpdate(true)})
+    }
     private var runtimeProbe: AndroidRuntimeProbe? = null
     private var fixtureCheck: Future<*>? = null
     private var fixtureCheckRunning = false
@@ -215,6 +235,7 @@ class MainActivity : Activity() {
             "shuffle" -> player?.apply { shuffleModeEnabled = !shuffleModeEnabled }
             "repeat" -> player?.apply { repeatMode = when (repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }
             "options" -> playbackMenu()
+            "app_update" -> if(availableUpdate!=null)showAppUpdate() else checkAppUpdate(true)
             "advanced_options" -> AlertDialog.Builder(this).setTitle("Playback options")
                 .setItems(arrayOf("Speed: 1×", "Speed: 1.5× (pitch unchanged)", "More like this", "Less like this", "Refresh recommendations", "Reset listening taste", "Diagnostics")) { _, which ->
                     when (which) {
@@ -248,7 +269,7 @@ class MainActivity : Activity() {
             "Playback" to listOf(MusicAction("Crossfade · local & downloaded",if(e.getBoolean("crossfade"))"On · 3 seconds · normal speed only" else "Off · online songs use preloading"){toolCommand("crossfade"){putBoolean("enabled",!e.getBoolean("crossfade"))}},MusicAction("Sleep timer",timer){sleepMenu()},MusicAction("Load next song's start",if(e.getBoolean("preload",true))"On · target 3 seconds · uses network data" else "Off"){toolCommand("preload"){putBoolean("enabled",!e.getBoolean("preload",true))}},MusicAction("Playback speed","Current: ${p.playbackParameters.speed}×"){MusicActionSheet.show(this,"Playback speed",groups=listOf("Pitch stays unchanged" to listOf(.75f,1f,1.25f,1.5f,2f).map {speed->MusicAction("${speed}×"){p.setPlaybackParameters(PlaybackParameters(speed,1f))}}))}),
             "Lyrics" to listOf(MusicAction("Choose lyrics file","Use real word timings from LRC or Lyricsfile",current!=null){action("import_lyrics")},MusicAction("Use online lyrics","Remove the local override for this song",current!=null){val id=p.currentMediaItem?.mediaId ?: return@MusicAction;lyricsWorker.submit {LocalLyrics(java.io.File(filesDir,"local-lyrics")).remove(id);runOnUiThread {if(active){lyricsKey="";loadLyrics()}}}}),
             "Downloads" to listOf(MusicAction("Retry interrupted download","Restarts the last incomplete file; saved files are preserved",downloadJob?.state in setOf("failed","interrupted","cancelled")){downloadJob?.track?.let {DownloadJobs.start(this,it)}}),
-            "More" to listOf(MusicAction("Recommendation preferences & diagnostics"){action("advanced_options")})
+            "More" to listOf(MusicAction(if(availableUpdate!=null)"Update available" else "Check for updates","Installed: $installedVersion"){action("app_update")},MusicAction("Recommendation preferences & diagnostics"){action("advanced_options")})
         ))
     }
     private fun itemCard(item:MediaItem):MusicCard? {
@@ -568,7 +589,7 @@ class MainActivity : Activity() {
     }
     override fun onStart() {
         super.onStart(); active = true; downloadJob=DownloadJobs.read(this);screen.downloadState(downloadJob?.state=="running");handler.post(progress)
-        sessionRecent=emptyList();loadPersonal()
+        sessionRecent=emptyList();loadPersonal();checkAppUpdate()
         screen.resumeArtwork()
         if(section=="library" || section=="downloads")loadLibrary(section=="downloads")
         val future = MediaController.Builder(this, SessionToken(this, ComponentName(this, PlaybackService::class.java))).buildAsync()

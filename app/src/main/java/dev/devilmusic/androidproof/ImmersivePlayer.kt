@@ -27,9 +27,11 @@ internal class ImmersivePlayer(context:Context,private val action:(String)->Unit
     private val bar=SeekBar(context).apply {max=10000;contentDescription="Playback position";progressTintList=android.content.res.ColorStateList.valueOf(MusicStyle.accent);thumbTintList=progressTintList
         setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(v:SeekBar){dragging=true};override fun onProgressChanged(v:SeekBar,p:Int,user:Boolean){};override fun onStopTrackingTouch(v:SeekBar){seek(duration*v.progress/10000);dragging=false}})}
     private fun glyph(symbol:String,label:String,primary:Boolean=false,click:()->Unit)=MusicGlyph(context,symbol,if(primary)MusicStyle.background else MusicStyle.ink).apply {contentDescription=label;isClickable=true;isFocusable=true;background=MusicStyle.touch(context,if(primary)MusicStyle.accent else Color.TRANSPARENT,36);setOnClickListener {click()}}
-    private val play=glyph("play","Play or pause",true){action("toggle")}
-    private val shuffle=glyph("shuffle","Shuffle"){action("shuffle")}
-    private val repeat=glyph("repeat","Repeat"){action("repeat")}
+    private val play=PlayerControl(context,"play","Play or pause",true){action("toggle")}
+    private val shuffle=PlayerControl(context,"shuffle","Shuffle"){action("shuffle")}
+    private val repeat=PlayerControl(context,"repeat","Repeat"){action("repeat")}
+    private val previous=PlayerControl(context,"previous","Previous track"){action("previous")}
+    private val next=PlayerControl(context,"next","Next track"){action("next")}
     private val favorite=glyph("heart","Add to Liked songs"){action("like_current")}
     private val lyricButton=MusicStyle.text(context,13f,bold=true).apply {text="Lyrics";contentDescription="Show lyrics";gravity=Gravity.CENTER;isClickable=true;isFocusable=true;setOnClickListener {setWords(true)}}
     private val mark=WaterMusicMark(context)
@@ -56,8 +58,8 @@ internal class ImmersivePlayer(context:Context,private val action:(String)->Unit
         transport.addView(artist,LinearLayout.LayoutParams(-1,-2).apply {topMargin=dp(5);bottomMargin=dp(8)})
         transport.addView(bar,LinearLayout.LayoutParams(-1,dp(36)));transport.addView(position)
         val small=landscape && context.resources.configuration.screenWidthDp<800
-        val side=if(small)44 else 56;val primary=if(small)56 else 64;val gap=if(small)2 else 14
-        val buttons=LinearLayout(context).apply {gravity=Gravity.CENTER;addView(shuffle,LinearLayout.LayoutParams(dp(44),dp(48)));addView(glyph("previous","Previous track"){action("previous")},LinearLayout.LayoutParams(dp(side),dp(side)));addView(play,LinearLayout.LayoutParams(dp(primary),dp(primary)).apply {leftMargin=dp(gap);rightMargin=dp(gap)});addView(glyph("next","Next track"){action("next")},LinearLayout.LayoutParams(dp(side),dp(side)));addView(repeat,LinearLayout.LayoutParams(dp(44),dp(48)))}
+        val side=if(small)48 else 56;val primary=if(small)56 else 72;val gap=if(small)0 else 10
+        val buttons=LinearLayout(context).apply {gravity=Gravity.CENTER;addView(shuffle,LinearLayout.LayoutParams(dp(48),dp(48)));addView(previous,LinearLayout.LayoutParams(dp(side),dp(side)));addView(play,LinearLayout.LayoutParams(dp(primary),dp(primary)).apply {leftMargin=dp(gap);rightMargin=dp(gap)});addView(next,LinearLayout.LayoutParams(dp(side),dp(side)));addView(repeat,LinearLayout.LayoutParams(dp(48),dp(48)))}
         transport.addView(buttons,LinearLayout.LayoutParams(-1,dp(if(small)64 else 76)))
         transport.addView(LinearLayout(context).apply {gravity=Gravity.CENTER;addView(artworkButton,LinearLayout.LayoutParams(0,dp(48),1f).apply {rightMargin=dp(4)});addView(lyricButton,LinearLayout.LayoutParams(0,dp(48),1f).apply {rightMargin=dp(6)});addView(glyph("download","Save offline"){action("download")},LinearLayout.LayoutParams(dp(48),dp(48)));addView(glyph("queue","Open queue"){dismiss();action("section:queue")},LinearLayout.LayoutParams(dp(48),dp(48)))})
         details.addView(transport,LinearLayout.LayoutParams(-1,-2))
@@ -128,7 +130,11 @@ internal class ImmersivePlayer(context:Context,private val action:(String)->Unit
     fun lyricsStatus(value:String)=words.status(value)
     fun artwork(bitmap:Bitmap?){art=bitmap;if(bitmap!=null){cover.setImageBitmap(bitmap);val colors=AmbientPalette.sample(bitmap.width,bitmap.height,bitmap::getPixel);ambient=AmbientSurface(colors);mark.tint(colors[colors.size/2])}else cover.setImageDrawable(MusicFallback(name.text.toString(),false));paintBackground()}
     fun pulse(value:VisualPulse){if(isShowing){cover.tick(value!=VisualPulse.REST);cover.pulse(value);mark.pulse(value);ambient.pulse(value.ambient)}}
-    fun bind(player:Player?){name.text=player?.mediaMetadata?.title ?: "Your music";artist.text=player?.mediaMetadata?.artist ?: "";artist.contentDescription="Open artist ${artist.text}";play.update(if(player?.isPlaying==true)"pause" else "play");shuffle.update("shuffle",if(player?.shuffleModeEnabled==true)MusicStyle.accent else MusicStyle.muted);repeat.update(if(player?.repeatMode==Player.REPEAT_MODE_ONE)"repeat_one" else "repeat",if(player?.repeatMode==Player.REPEAT_MODE_OFF)MusicStyle.muted else MusicStyle.accent);progress(player)}
+    fun bind(player:Player?){name.text=player?.mediaMetadata?.title ?: "Your music";artist.text=player?.mediaMetadata?.artist ?: "";artist.contentDescription="Open artist ${artist.text}";play.update(if(player?.isPlaying==true)"pause" else "play");shuffle.mode(player?.shuffleModeEnabled==true,"Shuffle: ${if(player?.shuffleModeEnabled==true)"on" else "off"}");repeat.mode(player?.repeatMode in setOf(Player.REPEAT_MODE_ALL,Player.REPEAT_MODE_ONE),"Repeat: ${when(player?.repeatMode){Player.REPEAT_MODE_ONE->"one track";Player.REPEAT_MODE_ALL->"all tracks";else->"off"}}",if(player?.repeatMode==Player.REPEAT_MODE_ONE)"repeat_one" else "repeat")
+        val selected=player?.currentMediaItem!=null
+        for(button in listOf(play,shuffle,repeat))button.isEnabled=selected
+        previous.isEnabled=selected && (player?.hasPreviousMediaItem()==true || player?.isCurrentMediaItemSeekable==true);next.isEnabled=selected && player?.hasNextMediaItem()==true
+        progress(player)}
     fun progress(player:Player?){duration=player?.duration?.takeIf {it>0} ?: 0;val ms=player?.currentPosition?.coerceAtLeast(0) ?: 0;bar.isEnabled=duration>0 && player?.isCurrentMediaItemSeekable==true;if(!dragging)bar.progress=if(duration>0)(ms*10000/duration).toInt() else 0;position.text="${time(ms)}  /  ${if(duration>0)time(duration)else "–:–"}";words.position(ms)}
     private fun time(ms:Long)="%d:%02d".format(ms/60000,ms/1000%60)
 }
