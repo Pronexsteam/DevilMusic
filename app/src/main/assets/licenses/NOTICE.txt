@@ -1,0 +1,26 @@
+Devil Music Android preview 0.0.17
+Combined Android application: GNU GPL version 3 or, at your option, any later version.
+This applies to the linked Android application, not to the desktop Deviload repository as a whole.
+
+NewPipeExtractor v0.26.5, Copyright Team NewPipe and contributors.
+Source: https://github.com/TeamNewPipe/NewPipeExtractor
+Pinned commit: f9e6bb808f82bf3e4dc1f2a29a16fd376931c8ef
+License: GPL-3.0-or-later; full text NewPipe-GPL-3.0.txt.
+The native adapter uses unmodified upstream helpers/search parser/transform code.
+
+Existing retained components preserve their original notices:
+YouTube.js 18.1.0 by LuanRT and contributors — MIT (../pinned/youtubei-LICENSE.txt).
+Media3 1.9.4 and AndroidX JavaScriptEngine 1.1.1 — Apache-2.0, Android Open Source Project.
+Rhino/Rhino Engine 1.8.1 — MPL-2.0, Mozilla and contributors.
+nanojson e9d656ddb49a412a5a0a5d5ef20ca7ef09549996 — MIT, TeamNewPipe fork of mmastrac/nanojson.
+jsoup 1.22.2 — MIT, Jonathan Hedley and contributors.
+protobuf-javalite 4.35.1 — BSD-3-Clause, Google.
+jsr305 3.0.2 — BSD-3-Clause, JSR-305 expert group.
+Kotlin and Android support dependencies retain their upstream licenses.
+
+Manrope variable font, Copyright 2018 The Manrope Project Authors.
+Source: https://github.com/google/fonts/tree/main/ofl/manrope
+License: SIL Open Font License 1.1; full notice in Manrope-OFL.txt.
+
+Corresponding source and build instructions are delivered beside the APK as a source archive, including exact upstream NewPipe source and the app/core sources. No signing keys, private files, profiles or signed stream URLs are included. Build instructions: BUILDING.md.
+

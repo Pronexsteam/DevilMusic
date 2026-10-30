@@ -1,0 +1,9 @@
+{
+  "package": "youtubei.js",
+  "version": "18.1.0",
+  "license": "MIT",
+  "inputSha256": "2f0006f1d5c554b27ef3756c62bf7c12d139772804b85ab147cbb16770055fba",
+  "classicSha256": "f631416cbfdf6712192512a234685fc8f1be1045592fee1dc6e890087a015f1e",
+  "bytes": 1556695,
+  "packaging": "unchanged bundle body; final ESM exports replaced with four-name classic namespace"
+}
